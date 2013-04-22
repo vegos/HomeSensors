@@ -1,79 +1,89 @@
 #include <MANCHESTER.h>
 #include <dht11.h>
+#include <ATTinyWatchdog.h>
+#include <avr/power.h>
+#include <avr/interrupt.h>
+
 
 #define DHT11PIN          2
 #define TXPin             1
 #define LedPin            0
 #define PowerPin          3
 
+
 dht11 DHT11;
 
 #define SensorNumber      1
-#define SensorType        1	 // 1 Temp/Hum, 2 Current
+#define SensorType        1    // 1 Temp/Hum, 2 Current
 
-long UpdateMillis;
-const long UpdateRate = 300000;  // Every 5 Minutes
-
-
+//long UpdateMillis;
+//const long UpdateRate = 300000;
 
 void setup() 
 {  
+  MANCHESTER.SetTxPin(TXPin);
+//  UpdateMillis=0;
+    // Setup watchdog to notify us every 4 seconds
+  ATTINYWATCHDOG.setup(8);
+  // Turn off subsystems which we aren't using  
+  power_timer0_disable();
+  // timer1 used by MANCHESTER
+  power_usi_disable();
+  // ADC used for reading a sensor
+  // ATTINYWATCHDOG turns off ADC before sleep and
+  // restores it when we wake up
   pinMode(DHT11PIN, INPUT);
   pinMode(PowerPin, OUTPUT);
   pinMode(LedPin, OUTPUT);
   pinMode(TXPin, OUTPUT);
-  MANCHESTER.SetTxPin(TXPin);
-  UpdateMillis=0; 		 // For TX right after booting
 }
-
-
 
 void loop()
 {
-  if (millis()-UpdateMillis>UpdateRate)
-  {
-    for (int x=0; x<2; x++)
-    {
-      float t,h;
-      digitalWrite(PowerPin, HIGH);
-      delay(250);
-      int chk = DHT11.read(DHT11PIN);
-      if (chk==DHTLIB_OK)
-      { 
-        t = DHT11.temperature;
-        h = DHT11.humidity;
-      }
-      unsigned int data = (int)t;
-      if (data != 0)
-      {
-        digitalWrite(LedPin, HIGH);
-        MANCHESTER.Transmit((SensorNumber*1000) + (SensorType*10000) + data);
-        digitalWrite(LedPin, LOW);
-        delay(200);
-      }
-      data = (int)h;
-      if (data != 0)
-      {
-        digitalWrite(LedPin, HIGH);
-        MANCHESTER.Transmit((SensorNumber*1000) + ((SensorType*10000)+10000) + data);
-        digitalWrite(LedPin, LOW);
-      }
-      delay(200);
-      digitalWrite(PowerPin, LOW);
-      UpdateMillis=millis();
-    }
-  }
+  WakeUp();
+  delay(10);
+  SendMessage();
+  Sleep();
+  DeepSleep(70); // 4 minutes, 40 seconds
 }
 
 
+void SendMessage()
+{
+  for (int x=0; x<2; x++)
+  {
+    float t,h;
+    digitalWrite(PowerPin, HIGH);
+    delay(100);
+    int chk = DHT11.read(DHT11PIN);
+    if (chk==DHTLIB_OK)
+    { 
+      t = DHT11.temperature;
+      h = DHT11.humidity;
+    }
+    unsigned int data = (int)t;
+    if (data != 0)
+    {
+      digitalWrite(LedPin, HIGH);
+      MANCHESTER.Transmit((SensorNumber*1000) + (SensorType*10000) + data);
+      digitalWrite(LedPin, LOW);
+      delay(100);
+    }
+    data = (int)h;
+    if (data != 0)
+    {
+      digitalWrite(LedPin, HIGH);
+      MANCHESTER.Transmit((SensorNumber*1000) + (SensorType*10000) + data);
+      digitalWrite(LedPin, LOW);
+    }
+    delay(100);
+    digitalWrite(PowerPin, LOW);
+//    UpdateMillis=millis();
+  }  
+}
 
 
-// Will be continued....
-
-
-// Testing for sleep. Input mode drains less current
-
-void sleep()
+void Sleep()
 {
   pinMode(LedPin, INPUT);
   pinMode(DHT11PIN, INPUT);
@@ -81,14 +91,17 @@ void sleep()
   pinMode(PowerPin, INPUT);
 }
 
-
-
-
-// Return pins on their required state
-
-void wakeup()
+void WakeUp()
 {
   pinMode(TXPin, OUTPUT);
   pinMode(LedPin, OUTPUT);
   pinMode(PowerPin, OUTPUT);  
+}
+
+void DeepSleep(unsigned int multiple)
+{  
+  Sleep();
+  // deep sleep for multiple * 4 seconds
+  ATTINYWATCHDOG.sleep(multiple);
+  WakeUp();
 }
