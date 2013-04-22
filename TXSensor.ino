@@ -16,8 +16,7 @@ dht11 DHT11;
 #define SensorNumber      1
 #define SensorType        1    // 1 Temp/Hum, 2 Current
 
-//long UpdateMillis;
-//const long UpdateRate = 300000;
+
 
 void setup() 
 {  
@@ -38,6 +37,8 @@ void setup()
   pinMode(TXPin, OUTPUT);
 }
 
+
+
 void loop()
 {
   WakeUp();
@@ -54,7 +55,7 @@ void SendMessage()
   {
     float t,h;
     digitalWrite(PowerPin, HIGH);
-    delay(100);
+    delay(50);
     int chk = DHT11.read(DHT11PIN);
     if (chk==DHTLIB_OK)
     { 
@@ -65,20 +66,21 @@ void SendMessage()
     if (data != 0)
     {
       digitalWrite(LedPin, HIGH);
-      MANCHESTER.Transmit((SensorNumber*1000) + (SensorType*10000) + data);
+      //                    eg 2*1000=2000 + 10000 for temp + 25c = 12025
+      MANCHESTER.Transmit((SensorNumber * 1000) + (SensorType * 10000) + data);
       digitalWrite(LedPin, LOW);
-      delay(100);
+      delay(50);
     }
     data = (int)h;
     if (data != 0)
-    {
+    {      
       digitalWrite(LedPin, HIGH);
-      MANCHESTER.Transmit((SensorNumber*1000) + (SensorType*10000) + data);
+      //                    eg 2*1000=2000 + 1+1 (for hum) * 10000 = 20000 for hum + 44% = 22044
+      MANCHESTER.Transmit((SensorNumber*1000) + ((SensorType+1) * 10000) + data);
       digitalWrite(LedPin, LOW);
     }
-    delay(100);
+    delay(50);
     digitalWrite(PowerPin, LOW);
-//    UpdateMillis=millis();
   }  
 }
 
