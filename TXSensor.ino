@@ -35,6 +35,15 @@ void setup()
   pinMode(PowerPin, OUTPUT);
   pinMode(LedPin, OUTPUT);
   pinMode(TXPin, OUTPUT);
+  // Blink the LED to identify sensor number
+  for (int x=0; x<SensorNumber; x++)
+  {
+    digitalWrite(LedPin, HIGH);
+    delay(150);
+    digitalWrite(LedPin, LOW);
+    delay(150);
+  }
+  delay(1000);
 }
 
 
@@ -87,6 +96,7 @@ void SendMessage()
 
 void Sleep()
 {
+  // Put all pins @ INPUT state for lower current consumption when sleeping
   pinMode(LedPin, INPUT);
   pinMode(DHT11PIN, INPUT);
   pinMode(TXPin, INPUT);
@@ -95,6 +105,7 @@ void Sleep()
 
 void WakeUp()
 {
+  // return the pins to the required state
   pinMode(TXPin, OUTPUT);
   pinMode(LedPin, OUTPUT);
   pinMode(PowerPin, OUTPUT);  
@@ -102,6 +113,7 @@ void WakeUp()
 
 void DeepSleep(unsigned int multiple)
 {  
+  // Going to sleep...
   Sleep();
   // deep sleep for multiple * 4 seconds
   ATTINYWATCHDOG.sleep(multiple);
